@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+
+const yargs = require("yargs");
+const sh = require("shelljs");
+const path = require("path");
+
+const calledFromDir = sh.pwd().toString();
+
+sh.fatal = true; // same as "set -e"
+sh.cd(__dirname); // path of this compile Javascript file
+
+const { debug, verbose } = yargs
+  .strict()
+  .usage("$0 [--debug] [-v]", "compile smart contract")
+  .option("debug", {
+    desc: "include debug info in compiled WASM",
+    type: "boolean",
+    default: false,
+  })
+  .option("verbose", {
+    desc: "log debug info",
+    type: "boolean",
+    default: false,
+    alias: "v",
+  })
+  .version(false).argv;
+
+if (verbose) console.log("##### Compiling smart contract #####");
+
+const buildCmd = debug
+  ? "cargo build --target wasm32-unknown-unknown"
+  : "cargo build --target wasm32-unknown-unknown --release";
+
+const packageName = require("fs")
+  .readFileSync(`${__dirname}/Cargo.toml`)
+  .toString()
+  .match(/name = "([^"]+)"/)[1]
+  .replace("-", "_");  // rust changes hyphens to underscores when building
+
+
+const outFile = `./target/wasm32-unknown-unknown/${
+  debug ? "debug" : "release"
+}/${packageName}.wasm`;
+
+if (verbose) console.log(`  build command:    ${buildCmd}`);
+if (verbose) console.log(`  output file: ${path.resolve(outFile)}`);
+
+const { code } = sh.exec(buildCmd);
+
+// Assuming this is compiled from the root project directory, link the compiled
+// contract to the `out` folder –
+// When running commands like `near deploy`, near-cli looks for a contract at
+// <CURRENT_DIRECTORY>/out/main.wasm
+if (code === 0 && calledFromDir !== __dirname) {
+  const linkDir = `${calledFromDir}/out`;
+  const link = `${calledFromDir}/out/main.wasm`;
+  sh.mkdir("-p", linkDir);
+  sh.rm("-f", link);
+  const linkPath = path.relative(linkDir, outFile);
+
+  if (verbose) console.log(`  linking to:   ${link}`);
+  if (verbose) console.log(`  symlink path: ${linkPath}`);
+
+  sh.ln("-s", linkPath, link);
+
+  if (verbose) console.log(`    ${sh.ls("-l", link)[0]}`);
+}
+
+if (verbose) console.log("#####           Done!          #####");
+
+process.exit(code);

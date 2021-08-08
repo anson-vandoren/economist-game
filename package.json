@@ -4,8 +4,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "npm run build:contract && npm run build:web",
-    "build:contract": "node contract/compile.js",
-    "build:contract:debug": "node contract/compile.js --debug",
+    "build:contract": "node contract/compile",
+    "build:contract:debug": "node contract/compile --debug",
     "build:web": "parcel build src/index.html --public-url ./",
     "dev:deploy:contract": "near dev-deploy",
     "deploy:contract": "near deploy",
@@ -29,7 +29,8 @@
     "nodemon": "~2.0.3",
     "parcel-bundler": "~1.12.4",
     "react-test-renderer": "~17.0.1",
-    "shelljs": "~0.8.4"
+    "shelljs": "~0.8.4",
+    "yargs": "^17.0.1"
   },
   "dependencies": {
     "near-api-js": "~0.41.0",
